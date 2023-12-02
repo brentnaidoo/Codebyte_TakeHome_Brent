@@ -1,0 +1,35 @@
+/*1.Determine the reporting periods from the ftWetBenchReportingTimeline table.
+2.For each reporting period, calculate the total productive time for each Wet bench.
+3.Join the ftWetbench and ftWetbenchWO tables using the UID as the common key.
+4.Calculate the % Productivity for each Wet bench and its individual baths based on the formula provided.*/
+
+WITH ReportingPeriods AS (
+    SELECT [Date], [Type], [Year]
+    FROM ftWetBenchReportingTimeline
+)
+
+SELECT
+    r.[Date] AS ReportingDate,
+    r.[Type] AS ReportingType,
+    r.[Year] AS ReportingYear,
+    w.[EquipmentID] AS WetBench,
+    w.[BathNo] AS BathNumber,
+    SUM(CASE WHEN w.RunNumber IS NOT NULL THEN w.WO_Quantity ELSE 0 END) AS TotalWO_Quantity,
+    SUM(CASE WHEN w.RunNumber IS NOT NULL THEN 1 ELSE 0 END) AS TotalRuns,
+    SUM(CASE WHEN w.RunNumber IS NOT NULL THEN w.WO_Quantity ELSE 0 END) / NULLIF(SUM(CASE WHEN w.RunNumber IS NOT NULL THEN w.LeachHoursPlanned ELSE 0 END), 0) AS Productivity
+FROM
+    ReportingPeriods r
+LEFT JOIN
+    ftWetbench w ON w.[StartTime] >= r.[Date] AND w.[StopTime] <= DATEADD(DAY, 1, r.[Date])
+LEFT JOIN
+    ftWetbenchWO wo ON w.UID = wo.UID
+GROUP BY
+    r.[Date],
+    r.[Type],
+    r.[Year],
+    w.[EquipmentID],
+    w.[BathNo]
+ORDER BY
+    r.[Date],
+    w.[EquipmentID],
+    w.[BathNo]
